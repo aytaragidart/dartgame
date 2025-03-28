@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+  <meta charset="utf-8">
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: transparent;
+      width: 100vw;
+      height: 100vh;
+      font-family: 'Arial', sans-serif;
+    }
+    #dart-board {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 300px;
+      z-index: 1;
+    }
+    .dart-container {
+      position: absolute;
+      z-index: 2;
+      text-align: center;
+    }
+    .dart-img {
+      width: 30px;
+      transform-origin: center;
+      animation: dartThrow 0.5s forwards;
+    }
+    .dart-username {
+      color: white;
+      font-size: 12px;
+      text-shadow: 1px 1px 2px black;
+      margin-top: 2px;
+      display: block;
+      text-align: center;
+      width: 100%;
+    }
+    #leaderboard {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 12px;
+      border-radius: 8px;
+      width: 240px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    }
+    #leaderboard h3 {
+      margin: 0 0 10px 0;
+      font-size: 16px;
+      text-align: center;
+      padding-bottom: 5px;
+      border-bottom: 1px solid #444;
+    }
+    #top-players {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    #top-players li {
+      padding: 8px 10px;
+      margin-bottom: 8px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px;
+      font-size: 14px;
+      display: flex;
+      justify-content: space-between;
+    }
+    #top-players li:nth-child(1) {
+      background: rgba(255, 215, 0, 0.2);
+    }
+    #top-players li:nth-child(2) {
+      background: rgba(192, 192, 192, 0.2);
+    }
+    #top-players li:nth-child(3) {
+      background: rgba(205, 127, 50, 0.2);
+    }
+    .player-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 120px;
+    }
+    .player-stats {
+      flex-shrink: 0;
+      margin-left: 10px;
+    }
+    @keyframes dartThrow {
+      from {
+        transform: translate(0, 0) rotate(0deg);
+      }
+      to {
+        transform: translate(var(--tx), var(--ty)) rotate(360deg);
+      }
+    }
+  </style>
+</head>
+<body>
+  <img id="dart-board" src="target.png">
+  <div id="leaderboard">
+    <h3>🏆 Lider Tablosu</h3>
+    <ol id="top-players"></ol>
+  </div>
+
+  <script>
+    // Twitch entegrasyonu için gerekli değişkenler
+    const players = {};
+    const SECTIONS = [20,1,18,4,13,6,10,15,2,17,3,19,7,16,8,11,14,9,12,5];
+
+    // Dart atış fonksiyonu
+    function throwDart(username) {
+      const board = document.getElementById("dart-board");
+      const rect = board.getBoundingClientRect();
+      
+      // Hedef pozisyonu hesapla
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const radius = rect.width / 2 * 0.8;
+      const angle = Math.random() * Math.PI * 2;
+      const distance = Math.random() * radius;
+      const targetX = centerX + Math.cos(angle) * distance;
+      const targetY = centerY + Math.sin(angle) * distance;
+      
+      // Dart oluştur
+      const dartContainer = document.createElement("div");
+      dartContainer.className = "dart-container";
+      dartContainer.style.left = `${centerX - 15}px`;
+      dartContainer.style.top = `${centerY - 15}px`;
+      
+      // Dart görseli
+      const dartImg = document.createElement("img");
+      dartImg.className = "dart-img";
+      dartImg.src = "dart.png";
+      
+      // Kullanıcı adı
+      const usernameLabel = document.createElement("div");
+      usernameLabel.className = "dart-username";
+      usernameLabel.textContent = username;
+      
+      // Animasyon ayarları
+      const deltaX = targetX - centerX;
+      const deltaY = targetY - centerY;
+      dartImg.style.setProperty('--tx', `${deltaX}px`);
+      dartImg.style.setProperty('--ty', `${deltaY}px`);
+      
+      // Elemanları birleştir
+      dartContainer.appendChild(dartImg);
+      dartContainer.appendChild(usernameLabel);
+      document.body.appendChild(dartContainer);
+      
+      // Puan hesapla
+      const normalizedDistance = distance / radius;
+      const sectionIndex = Math.floor((angle + Math.PI/20) / (Math.PI*2/20)) % 20;
+      let score = SECTIONS[sectionIndex];
+      
+      if(normalizedDistance < 0.07) score = 50;
+      else if(normalizedDistance < 0.15) score = 25;
+      else if(normalizedDistance > 0.9) score = 0;
+      else if(normalizedDistance > 0.4) score *= 3;
+      else if(normalizedDistance <= 0.15) score *= 2;
+      
+      // Lider tablosunu güncelle
+      if (!players[username]) {
+        players[username] = { score: 0, darts: 0 };
+      }
+      players[username].score += score;
+      players[username].darts += 1;
+      updateLeaderboard();
+      
+      // 5 saniye sonra kaldır
+      setTimeout(() => dartContainer.remove(), 5000);
+    }
+
+    // Lider tablosu güncelleme
+    function updateLeaderboard() {
+      const sorted = Object.entries(players)
+        .sort((a, b) => b[1].score - a[1].score)
+        .slice(0, 3);
+      
+      const leaderboardHTML = sorted.map(([name, data], i) => 
+        `<li>
+          <span class="player-name">${i+1}. ${name}</span>
+          <span class="player-stats">${data.score}p (${data.darts}⏎)</span>
+        </li>`
+      ).join("");
+      
+      document.getElementById("top-players").innerHTML = leaderboardHTML;
+    }
+
+    // Twitch chat komutlarını dinle
+    window.addEventListener('message', (event) => {
+      if (event.data.command === "throwDart" && event.data.username) {
+        throwDart(event.data.username);
+      }
+    });
+
+    // Sayfa yüklendiğinde lider tablosunu göster
+    updateLeaderboard();
+  </script>
+</body>
+</html>
