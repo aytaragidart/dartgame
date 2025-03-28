@@ -109,6 +109,11 @@
   </div>
 
   <script>
+    const params = new URLSearchParams(window.location.search);
+if(params.has('throw')) {
+  const user = params.get('user') || 'Anonim';
+  throwDart(user);
+}
  if(location.search.includes('cmd=throw')) {
   const user = new URLSearchParams(location.search).get('user') || 'Anonim';
   throwDart(user);
