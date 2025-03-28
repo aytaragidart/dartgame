@@ -109,6 +109,12 @@
   </div>
 
   <script>
+    window.addEventListener('message', (event) => {
+  if(event.data.event === 'throwDart') {
+    const user = event.data.data.username || 'Anonim';
+    throwDart(user); // Dart atış fonksiyonunu çağır
+  }
+});
     const params = new URLSearchParams(window.location.search);
 if(params.has('throw')) {
   const user = params.get('user') || 'Anonim';
